@@ -6,7 +6,6 @@
 2. [Module Description - What the module does and why it is useful](#module-description)
 3. [Setup - The basics of getting started with mcollective](#setup)
     * [What the mcollective module affects](#what-the-mcollective-module-affects)
-    * [Setup requirements](#setup-requirements)
     * [Beginning with mcollective](#beginning-with-mcollective)
 4. [Usage - Configuration options and additional functionality](#usage)
 5. [Reference - An under-the-hood peek at what the module is doing and how](#reference)
@@ -221,6 +220,29 @@ configuration file to use when configuring activemq middleware.  Bypasses
 String: default based on distribution.  The directory to copy ssl certificates
 to when configuring activemq middleware with `mcollective::middleware_ssl`.
 
+##### `activemq_memoryUsage`
+
+String: default "20 mb". The amount of memory ActiveMQ will take up with *actual
+messages*; it doesn't include things like thread management. See
+[ActiveMQ - Memory and Temp Usage for Messages (systemUsage)](http://docs.puppetlabs.com/mcollective/deploy/middleware/activemq.html#memory-and-temp-usage-for-messages-systemusage)
+for further information. String must match '^[0-9]+ [kmg]b$'.
+
+##### `activemq_storeUsage`
+
+String: default "1 gb". The amount of disk space ActiveMQ will use for stashing
+non-persisted messages if the memoryUsage is exceeded (e.g. in the event of a
+sudden flood of messages). See
+[ActiveMQ - Memory and Temp Usage for Messages (systemUsage)](http://docs.puppetlabs.com/mcollective/deploy/middleware/activemq.html#memory-and-temp-usage-for-messages-systemusage)
+for further information. String must match '^[0-9]+ [kmg]b$'.
+
+##### `activemq_tempUsage`
+
+String: default "20 mb". The amount of disk space dedicated to persistent messages
+(which MCollective doesn't use directly, but which may be used in networks of brokers
+to avoid duplicates). See
+[ActiveMQ - Memory and Temp Usage for Messages (systemUsage)](http://docs.puppetlabs.com/mcollective/deploy/middleware/activemq.html#memory-and-temp-usage-for-messages-systemusage)
+for further information. String must match '^[0-9]+ [kmg]b$'.
+
 ##### `rabbitmq_confdir`
 
 String: defaults to '/etc/rabbitmq'. The directory to copy ssl certificates to
@@ -245,6 +267,12 @@ client packages when installing the server and client components.
 
 String: defaults to 'present'.  What version of packages to `ensure` when
 `mcollective::manage_packages` is true.
+
+##### `ruby_stomp_ensure`
+
+String: defaults to 'installed'.  What version of the ruby-stomp package to
+`ensure` when `mcollective::manage_packages` is true. Only relevant on the
+Debian OS family.
 
 ##### `main_collective`
 
@@ -281,6 +309,15 @@ server.
 
 String: defaults to '/etc/mcollective/facts.yaml'.  Name of the file the
 'yaml' factsource plugin should load facts from.
+
+##### `excluded_facts`
+Array: defaults to []. List of facts to exclude from facts.yaml when
+`factsource` is 'yaml'. This is useful for preventing dynamic facts (that
+change on each Puppet run) from ending up in facts.yaml, which would trigger
+restarts of Mcollective. A default list of facts to ignore is managed
+internally: `uptime.*`, `rubysitedir`, `_timestamp`, `memoryfree.*`,
+`swapfree.*` and `last_run`. Note that the fact names can be Ruby regular
+expressions.
 
 ##### `classesfile`
 
@@ -353,7 +390,7 @@ String: defaults to 'admin'.  Username for the middleware admin user.
 
 ##### `middleware_admin_password`
 
-String: defaults to 'secret'.  Password to for the middleware 
+String: defaults to 'secret'.  Password to for the middleware
 admin user.
 
 ##### `server_config_file`
@@ -451,11 +488,33 @@ installing from a source uri the plugin will be copied to
 mcollective::plugin { 'puppet':
   package => true,
 }
+```
 
-mcollective::plugin { 'myplugin':
-  source => 'puppet:///modules/site_mcollective/plugins',
+When installing a plugin from source you need to create the correct directory
+structure for it to work.
+
+For example if you wish to sync an agent for apt which ships with ``apt.ddl``
+and ``apt.rb`` you need to create the following structure:
+
+```
+site_mcollective/files/plugins/apt/
+                               └── mcollective
+                                   └── agent
+                                       ├── apt.ddl
+                                       └── apt.rb
+```
+
+Now you can then point the ``source`` attribute of the defined type to the
+apt folder in your plugins directory.
+
+```puppet
+mcollective::plugin { 'apt':
+  source => 'puppet:///modules/site_mcollective/plugins/apt',
 }
 ```
+
+For more examples have a look at the directory structure in ``files/plugins``
+of this module.
 
 #### Parameters
 

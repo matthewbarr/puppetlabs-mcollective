@@ -40,6 +40,23 @@ describe 'mcollective' do
       end
     end
 
+    describe '#ruby_stomp_ensure' do
+      let(:facts) { { :osfamily => 'Debian' } }
+      it 'should default to installed' do
+        should contain_package('ruby-stomp').with_ensure('installed')
+      end
+      
+      context 'latest' do
+        let(:params) { { :ruby_stomp_ensure => 'latest' } }
+        it { should contain_package('ruby-stomp').with_ensure('latest') }
+      end
+
+      context '1.2.10-1puppetlabs1' do
+        let(:params) { { :ruby_stomp_ensure => '1.2.10-1puppetlabs1' } }
+        it { should contain_package('ruby-stomp').with_ensure('1.2.10-1puppetlabs1') }
+      end
+    end
+
     describe '#main_collective' do
       context 'default' do
         it { should contain_mcollective__common__setting('main_collective').with_value('mcollective') }
@@ -143,6 +160,35 @@ describe 'mcollective' do
           it do
             facts.keys.each do |k|
               should_not contain_file('/etc/mcollective/facts.yaml').with_content(/^#{k.to_s}.*/m)
+            end
+          end
+        end
+
+        describe '#excluded_facts' do
+          context 'dynamic fact removal with user-supplied facts' do
+            let(:params) { { :excluded_facts => [ 'path', 'last_root_login' ] } }
+            let(:facts) do
+              {
+                :last_run        => 'Wed Oct 16 10:16:10 MST 2013',
+                :memoryfree      => '5.78 GB',
+                :memoryfree_mb   => '5915.74',
+                :rubysitedir     => '/usr/lib/ruby/site_ruby/1.8',
+                :swapfree        => '2.00 GB',
+                :swapfree_mb     => '2047.99',
+                :uptime          => '16:20 hours',
+                :uptime_days     => '0',
+                :uptime_hours    => '16',
+                :uptime_seconds  => '58838',
+                :path            => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/X11R6/bin',
+                :last_root_login => 'Fri Mar 21 17:11:03 CET 2014',
+              }
+            end
+
+            it { should contain_file('/etc/mcollective/facts.yaml') }
+            it do
+              facts.keys.each do |k|
+                should_not contain_file('/etc/mcollective/facts.yaml').with_content(/^#{k.to_s}.*/m)
+              end
             end
           end
         end
@@ -476,6 +522,87 @@ describe 'mcollective' do
           context 'set' do
             let(:params) { { :middleware => true, :activemq_config => 'Lovingly hand-crafted' } }
             it { should contain_file('activemq.xml').with_content('Lovingly hand-crafted') }
+          end
+        end
+
+        describe '#activemq_memoryUsage' do
+          let(:params) { { :server => false, :middleware => true } }
+          it 'should default to 20 mb' do
+            should contain_file('activemq.xml').with_content(/<memoryUsage limit="20 mb"\/>/)
+          end
+
+          context '1 gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_memoryUsage => '1 gb' } }
+            it { should contain_file('activemq.xml').with_content(/<memoryUsage limit="1 gb"\/>/) }
+          end
+
+          context 'bad param 1gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_memoryUsage => '1gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"1gb" does not match/) }
+          end
+
+          context 'bad param A gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_memoryUsage => 'A gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"A gb" does not match/) }
+          end
+
+          context 'bad param array' do
+            let(:params) { { :server => false, :middleware => true, :activemq_memoryUsage => ['1 gb'] } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /\["1 gb"\] is not a string/) }
+          end
+        end
+
+        describe '#activemq_storeUsage' do
+          let(:params) { { :server => false, :middleware => true } }
+          it 'should default to 1 gb' do
+            should contain_file('activemq.xml').with_content(/<storeUsage limit="1 gb" name="foo"\/>/)
+          end
+
+          context '2 mb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_storeUsage => '2 mb' } }
+            it { should contain_file('activemq.xml').with_content(/<storeUsage limit="2 mb" name="foo"\/>/) }
+          end
+
+          context 'bad param 1gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_storeUsage => '1gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"1gb" does not match/) }
+          end
+
+          context 'bad param A gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_storeUsage => 'A gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"A gb" does not match/) }
+          end
+
+          context 'bad param array' do
+            let(:params) { { :server => false, :middleware => true, :activemq_storeUsage => ['1 gb'] } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /\["1 gb"\] is not a string/) }
+          end
+        end
+
+        describe '#activemq_tempUsage' do
+          let(:params) { { :server => false, :middleware => true } }
+          it 'should default to 100 mb' do
+            should contain_file('activemq.xml').with_content(/<tempUsage limit="100 mb"\/>/)
+          end
+
+          context '1 gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_tempUsage => '1 gb' } }
+            it { should contain_file('activemq.xml').with_content(/<tempUsage limit="1 gb"\/>/) }
+          end
+
+          context 'bad param 1gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_tempUsage => '1gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"1gb" does not match/) }
+          end
+
+          context 'bad param A gb' do
+            let(:params) { { :server => false, :middleware => true, :activemq_tempUsage => 'A gb' } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /"A gb" does not match/) }
+          end
+
+          context 'bad param array' do
+            let(:params) { { :server => false, :middleware => true, :activemq_tempUsage => ['1 gb'] } }
+            it { expect { should compile }.to raise_error(Puppet::Error, /\["1 gb"\] is not a string/) }
           end
         end
 
